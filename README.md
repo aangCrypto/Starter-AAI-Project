@@ -1,5 +1,7 @@
 # Starter AAI Project
 
+**Branch Tested**: `test`
+
 Starter base for the **Agentic AI Workshop**. It holds
 the starter app and the workshop project brief.
 
