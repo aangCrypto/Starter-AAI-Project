@@ -1,8 +1,7 @@
 // Prisma schema for the Budiman HRMS starter app.
-// Only the User table exists so far. You add the leave request table in
-// Session 2, from the data design you write in docs/specs/.
-// Roles are stored as a String because the SQLite connector does not support
-// Prisma `enum`. The valid values are in src/lib/constants.ts.
+// Roles, leave types and statuses are stored as a String because the SQLite
+// connector does not support Prisma `enum`. The valid values are in
+// src/lib/constants.ts.
 
 datasource db {
   provider = "sqlite"
@@ -23,4 +22,37 @@ model User {
   designation      String
   division         String
   createdAt        DateTime @default(now())
+
+  requestsAsEmployee   LeaveRequest[] @relation("EmployeeRequests")
+  requestsAsSupervisor LeaveRequest[] @relation("SupervisorRequests")
+  requestsDecidedByHr  LeaveRequest[] @relation("HrDecidedRequests")
+}
+
+// One row per leave request (design Part A §3). A request is created by an
+// Employee for themselves, decided first by the named supervisor, then by
+// one HR officer. Nothing is edited after submission; status moves only as
+// described in design §4.
+model LeaveRequest {
+  id               Int      @id @default(autoincrement())
+  employeeId       Int
+  supervisorId     Int
+  leaveType        String // ANNUAL | SICK | EMERGENCY
+  startDate        DateTime // leave day 1 (midnight)
+  endDate          DateTime // last leave day (midnight); never before startDate
+  days             Int // inclusive calendar-day count, computed at submission
+  reason           String? // optional free text from the employee
+  status           String // AWAITING_SUPERVISOR | SIGNED | AWAITING_HR | APPROVED | REJECTED | WITHDRAWN
+  supervisorRemark String? // required by the app on reject, optional on sign
+  hrRemark         String? // required by the app on reject, optional on approve
+  hrDecidedById    Int? // which HR officer decided; set once, then never changes
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  employee      User  @relation("EmployeeRequests", fields: [employeeId], references: [id])
+  supervisor    User  @relation("SupervisorRequests", fields: [supervisorId], references: [id])
+  hrDecidedBy   User? @relation("HrDecidedRequests", fields: [hrDecidedById], references: [id])
+
+  @@index([employeeId])
+  @@index([supervisorId, status])
+  @@index([status])
 }
