@@ -1,13 +1,33 @@
 import { requireRole } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { LeaveHomeSections } from "@/components/LeaveHomeSections";
+import { toLeaveRequestRow } from "@/components/LeaveRequestTable";
 
-// The Supervisor home page: a page with only a short hint for now. Only Supervisor users can open it
-// (design §5).
+// Supervisor home (design §12): only the requests that named them.
 export default async function SupervisorPage() {
-  await requireRole("SUPERVISOR");
+  const user = await requireRole("SUPERVISOR");
+
+  const requests = await prisma.leaveRequest.findMany({
+    where: { supervisorId: user.id },
+    include: { employee: { select: { name: true } } },
+    orderBy: { updatedAt: "desc" },
+  });
+  const rows = requests.map(toLeaveRequestRow);
+  const actionNeeded = rows.filter((r) => r.status === "AWAITING_SUPERVISOR");
+  const history = rows.filter((r) => r.status !== "AWAITING_SUPERVISOR");
 
   return (
-    <p className="text-sm text-slate-400">
-      This page is empty. Continue here with your own project, for example the Leave Request module.
-    </p>
+    <>
+      <PageHeader
+        title="Requests for me"
+        description="Sign or reject the requests your employees sent to you."
+      />
+      <LeaveHomeSections
+        actionRows={actionNeeded}
+        historyRows={history}
+        rowHref={(r) => `/supervisor/leave/${r.id}`}
+      />
+    </>
   );
 }
