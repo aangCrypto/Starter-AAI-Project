@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# build output
+.next/
+out/
+
+# local database + secrets (create from .env.example)
+.env
+*.db
+*.db-journal
+
+# types
+next-env.d.ts
+
+# logs
+npm-debug.log*
